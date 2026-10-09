@@ -17,7 +17,10 @@ Not connected yet. `CONFIG.submitEndpoint` and `CONFIG.analyticsEndpoint` are em
 Quick check once connected: open the Apps Script `/exec` URL in a browser — it should return `{"ok":true,"service":"frido-creator-lander"}` — then submit one test application and confirm a row lands in the `Applications` tab.
 
 ## Go live
-1. Deploy `apps-script/Code.gs` as a Google Apps Script web app (instructions at the top of the file).
+1. Set up the backend (about 3 minutes, needs the Google account that should own the data):
+   1. Create a Google Sheet → Extensions → Apps Script → replace `Code.gs` with `apps-script/Code.gs` → Save.
+   2. Choose `setup` in the function dropdown → Run → approve permissions. The log should say "Setup OK".
+   3. Deploy → New deployment → Web app · Execute as **Me** · Who has access **Anyone** → Deploy → copy the `/exec` URL.
 2. In `index.html`, fill the `CONFIG` block: `submitEndpoint`, `analyticsEndpoint`, `referralBaseUrl`, `privacyUrl`, `termsUrl` (and `supportUrl` if approved).
    After pasting a new version of `Code.gs`, use Deploy → Manage deployments → edit → **New version**, or the live URL keeps running the old code.
 3. Host the folder as-is (Netlify, or a Shopify page with the assets on the Shopify CDN — then update the paths in `CREATORS`).

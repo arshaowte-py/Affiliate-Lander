@@ -1,10 +1,17 @@
 /**
  * Frido Creator lander — submissions + analytics backend (Google Apps Script).
  *
- * Setup
- * 1. Create a Google Sheet. Extensions → Apps Script → paste this file.
- * 2. Deploy → New deployment → Web app. Execute as: Me. Who has access: Anyone.
- * 3. Copy the /exec URL into CONFIG.submitEndpoint and CONFIG.analyticsEndpoint in index.html.
+ * Setup (about 3 minutes)
+ * 1. Create a Google Sheet (e.g. "Frido Creator Applications"). Extensions → Apps Script.
+ * 2. Replace everything in Code.gs with this file. Save.
+ * 3. Pick `setup` in the function dropdown → Run → approve the permission prompt.
+ *    This creates the Applications and Events tabs, then writes and removes a test row.
+ *    Check the Execution log says "Setup OK".
+ * 4. Deploy → New deployment → type: Web app. Execute as: Me. Who has access: Anyone. Deploy.
+ * 5. Copy the Web app URL (ends in /exec) into CONFIG.submitEndpoint and
+ *    CONFIG.analyticsEndpoint in index.html.
+ * After editing this file later: Deploy → Manage deployments → edit → Version: New version,
+ * otherwise the /exec URL keeps running the old code.
  *
  * The page treats a submission as successful only when this returns {ok:true, id}.
  */
@@ -88,4 +95,28 @@ function newId_() {
 
 function json_(o) {
   return ContentService.createTextOutput(JSON.stringify(o)).setMimeType(ContentService.MimeType.JSON);
+}
+
+/** Run once from the editor: creates both tabs with headers and proves a write works end to end. */
+function setup() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  [[APPLICATION_SHEET, APPLICATION_COLUMNS], [EVENT_SHEET, EVENT_COLUMNS]].forEach(([name, cols]) => {
+    const sh = ss.getSheetByName(name) || ss.insertSheet(name);
+    if (sh.getLastRow() === 0) sh.appendRow(cols);
+    sh.setFrozenRows(1);
+    sh.getRange(1, 1, 1, cols.length).setFontWeight('bold').setBackground('#FFD100');
+  });
+  const blank = ss.getSheetByName('Sheet1');
+  if (blank && blank.getLastRow() === 0 && ss.getSheets().length > 2) ss.deleteSheet(blank);
+
+  const res = JSON.parse(doPost({ postData: { contents: JSON.stringify({
+    kind: 'application', name: 'Setup Test', whatsapp: '+919999999999', whatsapp_consent: true,
+    platforms: ['Instagram'], source: 'setup-test'
+  }) } }).getContent());
+  if (!res.ok) throw new Error('Test write failed: ' + res.error);
+  const sh = ss.getSheetByName(APPLICATION_SHEET);
+  const last = sh.getLastRow();
+  if (sh.getRange(last, 1).getValue() !== res.id) throw new Error('Test row not found');
+  sh.deleteRow(last);
+  Logger.log('Setup OK — test application %s written and removed. Now Deploy → New deployment → Web app.', res.id);
 }
