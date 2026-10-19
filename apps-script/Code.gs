@@ -6,7 +6,8 @@
  *    Replace Code.gs with this file. Save.
  * 2. Run `setup` once (approve permissions). Log should say "Setup OK".
  * 3. Zoho: api-console.zoho.in → your Self Client → Generate Code
- *      scope: ZohoBigin.modules.ALL,ZohoBigin.settings.READ,ZohoBigin.users.READ
+ *      scope: ZohoBigin.modules.ALL,ZohoBigin.modules.notes.ALL,ZohoBigin.settings.layouts.READ,ZohoBigin.settings.tags.ALL,ZohoBigin.users.READ,ZohoSearch.securesearch.READ
+ *      (search needs ZohoSearch.securesearch.READ; ZohoBigin.settings.READ is not a real scope)
  *      duration: 10 minutes → Create → pick the Frido org → copy the code.
  *    Paste the code, Client ID and Client Secret into connectBigin() below,
  *    run `connectBigin` within 10 minutes, then DELETE the three values from the
@@ -14,8 +15,8 @@
  * 4. Run `checkBigin`. It finds the "Creator Onboarding" pipeline, reads its fields
  *    and logs which form answers will land in which Bigin field.
  * 5. Deploy → New deployment → Web app · Execute as: Me · Who has access: Anyone.
- *    Copy the /exec URL into ENDPOINT (apply.html) and CONFIG.submitEndpoint +
- *    CONFIG.analyticsEndpoint (index.html).
+ *    Copy the /exec URL into CONFIG.submitEndpoint + CONFIG.analyticsEndpoint (index.html).
+ *    index.html passes it to apply.html as ?ep=, so apply.html needs no edit.
  * 6. Run `installRetryTrigger` once. Any application Bigin rejects is retried every 10 minutes.
  * After editing this file later: Deploy → Manage deployments → edit → Version: New version.
  *
@@ -169,7 +170,8 @@ function upsertContact_(p) {
   };
   if (BIGIN.ownerId) data.Owner = { id: BIGIN.ownerId };
 
-  let id = findContact_('(Mobile:equals:' + p.mobile + ')');
+  const local = String(p.mobile).replace(/^\+91/, '');   // the team often types numbers without +91
+  let id = findContact_('((Mobile:equals:' + p.mobile + ')or(Mobile:equals:' + local + '))');
   if (!id && p.email) id = findContact_('(Email:equals:' + p.email + ')');
   if (id) {
     data.id = id;
@@ -183,7 +185,7 @@ function upsertContact_(p) {
 }
 
 function findContact_(criteria) {
-  const res = api_('get', '/Contacts/search?criteria=' + encodeURIComponent(criteria) + '&fields=id', null, true);
+  const res = api_('get', '/Contacts/search?criteria=' + encodeURIComponent(criteria), null, true);
   return res && res.data && res.data.length ? res.data[0].id : '';
 }
 
@@ -202,7 +204,7 @@ function createOrNoteRecord_(p, contactId) {
     Deal_Name: '@' + p.instagram + ' – ' + p.name,
     Stage: BIGIN.newStage,
     Sub_Pipeline: cfg.subPipeline,
-    Pipeline: { id: cfg.layoutId },
+    Pipeline: { id: cfg.layoutId, name: cfg.layoutName },
     Contact_Name: { id: contactId }
   };
   if (BIGIN.ownerId) base.Owner = { id: BIGIN.ownerId };
@@ -223,16 +225,33 @@ function createOrNoteRecord_(p, contactId) {
     note.Note_Content = 'Some fields were not saved: ' + String(ex).slice(0, 300) + '\n\n' + note.Note_Content;
   }
   api_('post', '/Pipelines/' + id + '/Notes', { data: [note] });
-  try { api_('post', '/Pipelines/actions/add_tags?ids=' + id, { tags: [{ name: BIGIN.tag }] }); } catch (ex) {}
+  try { api_('post', '/Pipelines/actions/add_tags', { tags: [tag_()], ids: [id] }); } catch (ex) {}
   return id;
 }
 
 function existingRecord_(contactId, layoutId) {
   try {
-    const res = api_('get', '/Contacts/' + contactId + '/Pipelines?fields=id,Pipeline,Stage', null, true);
+    let res;
+    try { res = api_('get', '/Contacts/' + contactId + '/Pipelines?fields=Deal_Name,Pipeline,Stage', null, true); }
+    catch (ex) { res = api_('get', '/Contacts/' + contactId + '/Deals?fields=Deal_Name,Pipeline,Stage', null, true); } // name used in the Bigin docs
     const hit = (res && res.data || []).find(r => r.Pipeline && String(r.Pipeline.id) === String(layoutId));
     return hit ? hit.id : '';
   } catch (ex) { return ''; }
+}
+
+/* The "Creator Lander" tag, created once if missing (add_tags may not auto-create). Cached for 6 hours. */
+function tag_() {
+  const cache = CacheService.getScriptCache();
+  const c = cache.get('zb_tag'); if (c) return JSON.parse(c);
+  const list = api_('get', '/settings/tags?module=Pipelines', null, true);
+  let t = (list && list.tags || []).find(x => String(x.name).toLowerCase() === BIGIN.tag.toLowerCase());
+  if (!t) {
+    const res = api_('post', '/settings/tags?module=Pipelines', { tags: [{ name: BIGIN.tag }] });
+    t = { name: BIGIN.tag, id: res.tags[0].details.id };
+  }
+  t = { name: t.name, id: t.id };
+  cache.put('zb_tag', JSON.stringify(t), 21600);
+  return t;
 }
 
 function values_(p) {
@@ -299,9 +318,12 @@ function pipelineCfg_(force) {
   const fields = {};
   (layout.sections || []).forEach(s => (s.fields || []).forEach(f => {
     fields[f.field_label] = { api: f.api_name, type: f.data_type };
-    if (f.api_name === 'Sub_Pipeline' && f.pick_list_values && f.pick_list_values.length) sub = f.pick_list_values[0].actual_value || f.pick_list_values[0].display_value;
+    if (f.api_name === 'Sub_Pipeline') {
+      const v = (f.pick_list_values || []).map(x => x.actual_value || x.display_value).filter(x => x && x !== '-None-');
+      if (v.length) sub = v[0];
+    }
   }));
-  const cfg = { layoutId: layout.id, subPipeline: sub, fields: fields };
+  const cfg = { layoutId: layout.id, layoutName: layout.name, subPipeline: sub, fields: fields };
   cache.put('zb_cfg', JSON.stringify(cfg), 21600);
   return cfg;
 }

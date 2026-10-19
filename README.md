@@ -16,9 +16,40 @@ A single-page, self-contained launch page for the Frido Creator programme.
 
 `?ref=` and UTM parameters on the lander are passed into the popup and saved on the application (Outreach Ref / UTM Campaign in Bigin).
 
+## Bigin fields to create
+The "Creator Onboarding" pipeline exists (stage "New Application" is where applications land), but as of 19 Oct 2026 it has **none** of the custom fields below. Until they exist, every answer still goes into the record's note, so nothing is lost; the fields make the answers filterable and give the dashboard something to count.
+
+Bigin → Settings → Customization → Pipelines → Creator Onboarding → add these. Labels must match exactly (`checkBigin` maps label → API name). Picklist values must match exactly too, or Bigin rejects the value and the record is saved without the custom fields (the note says which).
+
+| Label | Type | Values |
+|---|---|---|
+| Application ID | Single line | |
+| Instagram Handle | Single line | |
+| Instagram URL | URL | |
+| Followers Range | Pick list | Under 10k · 10k–50k · 50k–100k · 100k–500k · 500k+ |
+| Avg Reel Views | Pick list | Under 5k · 5k–25k · 25k–100k · 100k+ |
+| Other Accounts | Multi line | |
+| Niche | Multi-select | WFH / desk · Lifestyle · Health / physio · Fitness · Parenting · Travel · Tech · Fashion · Comedy · Other |
+| Open To | Multi-select | Affiliate money · Barter collab · Paid content / UGC · Partnership ads |
+| Partnership Ads OK | Pick list | Yes · Open to discuss · No |
+| Fee per Reel | Currency | |
+| Products Interested | Multi-select | Posture & back · Sleep & pillows · Cushions & seating · Hot & cold therapy · Feet & walking · Workspace & chairs |
+| Content Language | Pick list | English · Hindi · Hinglish · Marathi · Tamil · Telugu · Kannada · Malayalam · Bengali · Gujarati · Punjabi · Other |
+| Heard From | Pick list | Instagram DM from Frido · Email from Frido · Frido influencer marketing team · Frido employee · Another creator · Frido website · Frido store · Other |
+| Heard From Person | Single line | |
+| In Touch With Frido | Pick list | Yes · No |
+| Frido Contact Name | Single line | |
+| Frido Contact Team | Pick list | Not sure · Influencer marketing · Marketing / brand · Sales · Retail store · Other |
+| Outreach Ref | Single line | |
+| UTM Campaign | Single line | |
+| Existing Affiliate Code | Single line | |
+
+The ranges use an en dash (–), not a hyphen. Copy the values from this table.
+
 ## Go live
-1. **Bigin** — pipeline "Creator Onboarding" with stage "New Application" (plus the custom fields listed in `FIELD_LABELS` in `Code.gs`; any missing field still lands in the note).
+1. **Bigin** — pipeline "Creator Onboarding" with stage "New Application", plus the fields above.
 2. **Apps Script** — new Google Sheet → Extensions → Apps Script → paste `apps-script/Code.gs`, then run in order: `setup`, `connectBigin` (see the steps at the top of the file — never commit the code/secret), `checkBigin`, `installRetryTrigger`.
+   Self Client scope (exactly): `ZohoBigin.modules.ALL,ZohoBigin.modules.notes.ALL,ZohoBigin.settings.layouts.READ,ZohoBigin.settings.tags.ALL,ZohoBigin.users.READ,ZohoSearch.securesearch.READ`. Search needs `ZohoSearch.securesearch.READ`, and the tag is created on first use, so it needs `settings.tags`.
 3. **Deploy** → New deployment → Web app · Execute as **Me** · Access **Anyone** → copy the `/exec` URL.
 4. **index.html** → paste that URL into `CONFIG.submitEndpoint` and `CONFIG.analyticsEndpoint`. That's the only place it goes; the lander passes it to the popup.
 5. Deploy the folder (Netlify).
@@ -43,7 +74,7 @@ page_view, hero_cta_click, cta_click, creator_reel_play, creator_reel_complete, 
 ## Before launch
 - [ ] `CONFIG.submitEndpoint` / `analyticsEndpoint` set to the deployed Apps Script URL.
 - [ ] One test application shows `Synced` in the Sheet and appears in Bigin → Creator Onboarding.
-- [ ] `referralBaseUrl`, `privacyUrl`, `termsUrl` (and `supportUrl` if used) filled in.
+- [ ] `termsUrl` (and `supportUrl` if used) filled in. `privacyUrl` is set to myfrido.com's privacy policy; links with no URL are hidden.
 - [x] `og:image`, `og:url` and `referralBaseUrl` point at `https://fridoxcreators.netlify.app/` (change all three if the page moves to another domain).
 - [ ] Commission and discount terms confirmed with the offer owner (the page deliberately shows no numbers).
 - [ ] Tier names (Start / Grow / Lead) confirmed or replaced in `TIERS`.

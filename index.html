@@ -999,7 +999,7 @@ const CONFIG = {
   submitEndpoint: "",      // Google Apps Script web-app URL (see apps-script/Code.gs). Must return {ok:true, id:"..."}.
   analyticsEndpoint: "",   // Same Apps Script URL works; events are sent with kind:"event".
   referralBaseUrl: "https://fridoxcreators.netlify.app/",     // Public URL of this page, e.g. "https://www.myfrido.com/pages/creators". Empty = current page URL.
-  privacyUrl: "",          // e.g. "https://www.myfrido.com/policies/privacy-policy"
+  privacyUrl: "https://www.myfrido.com/policies/privacy-policy",
   termsUrl: "",
   supportUrl: "",
   debug: false,
@@ -1144,7 +1144,7 @@ if (attribution.ref) track("referral_invite_click", { ref: attribution.ref });
 
 ["privacyUrl", "termsUrl", "supportUrl"].forEach((k, i) => {
   const el = [$("#fPrivacy"), $("#fTerms"), $("#fSupport")][i];
-  if (CONFIG[k]) { el.href = CONFIG[k]; el.hidden = false; } else if (k !== "supportUrl") { el.removeAttribute("target"); }
+  if (CONFIG[k]) { el.href = CONFIG[k]; el.hidden = false; } else { el.hidden = true; } // no dead "#" links
 });
 if (CONFIG.privacyUrl) $("#privacyLink").href = CONFIG.privacyUrl; else $("#privacyLink").remove();
 
