@@ -203,7 +203,7 @@ function createOrNoteRecord_(p, contactId) {
   const cfg = pipelineCfg_();
   const note = { Note_Title: 'Creator application ' + p.application_id, Note_Content: noteText_(p) };
 
-  const existing = existingRecord_(contactId, cfg.layoutId);
+  const existing = existingRecord_(contactId, cfg.layoutId) || recordFromSheet_(contactId);
   if (existing) {
     api_('post', '/Pipelines/' + existing + '/Notes', { data: [note] });
     return existing;
@@ -257,6 +257,24 @@ function existingRecord_(contactId, layoutId) {
     const hit = (res && res.data || []).find(r => r.Pipeline && String(r.Pipeline.id) === String(layoutId));
     return hit ? hit.id : '';
   } catch (ex) { return ''; }
+}
+
+/* Earlier application from the same Contact, found via the Sheet. Works even when the layout has no
+   Contact Name field, so Bigin keeps no link between the record and the Contact. */
+function recordFromSheet_(contactId) {
+  const sh = sheet_(APP_SHEET, APP_COLUMNS);
+  const last = sh.getLastRow(); if (last < 2) return '';
+  const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const c = head.indexOf('bigin_contact_id'), r = head.indexOf('bigin_record_id');
+  const rows = sh.getRange(2, 1, last - 1, head.length).getValues();
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (String(rows[i][c]) !== String(contactId) || !rows[i][r]) continue;
+    try {                                                   // skip records deleted in Bigin since
+      const res = api_('get', '/Pipelines/' + rows[i][r], null, true);
+      if (res && res.data && res.data[0]) return String(rows[i][r]);
+    } catch (ex) {}
+  }
+  return '';
 }
 
 /* The "Creator Lander" tag, created once if missing (add_tags may not auto-create). Cached for 6 hours. */

@@ -17,7 +17,7 @@ A single-page, self-contained launch page for the Frido Creator programme.
 `?ref=` and UTM parameters on the lander are passed into the popup and saved on the application (Outreach Ref / UTM Campaign in Bigin).
 
 ## Bigin fields to create
-The fields were created on 19 Oct 2026, with slightly different labels and values from this table: "Herd From", "Herd from Person", "In Touch with Frido", "Outreach Reference"; hyphens in the ranges; Title Case options; Frido Contact Team as text. `Code.gs` is set up for them as built: `FIELD_LABELS` uses the real labels; `option_()` matches answers ignoring case, spaces and dash style; `VALUE_MAP` covers the two wording differences ("Affiliate money" → "Affiliate Commission", "Cushions & seating" → "Cushion & Seating"). Still missing: **UTM Campaign** and **Existing Affiliate Code** (those answers go in the note until they are added). Run `checkBigin` after any change in Bigin: it lists every field and any form answer with no matching option.
+The fields were created on 19 Oct 2026, with slightly different labels and values from this table: "Herd From", "Herd from Person", "In Touch with Frido", "Outreach Reference"; hyphens in the ranges; Title Case options; Frido Contact Team as text. `Code.gs` is set up for them as built: `FIELD_LABELS` uses the real labels; `option_()` matches answers ignoring case, spaces and dash style; `VALUE_MAP` covers the two wording differences ("Affiliate money" → "Affiliate Commission", "Cushions & seating" → "Cushion & Seating"). Also add the standard **Contact Name** field to the Creator Onboarding layout: without it Bigin drops the record → Contact link (repeat applicants are still matched through the Sheet). Still missing: **UTM Campaign** and **Existing Affiliate Code** (those answers go in the note until they are added). Run `checkBigin` after any change in Bigin: it lists every field and any form answer with no matching option.
 
 Original spec, for reference:
 
@@ -74,7 +74,7 @@ page_view, hero_cta_click, cta_click, creator_reel_play, creator_reel_complete, 
 `?ref=` and UTM parameters are kept for the session and sent with the application.
 
 ## Before launch
-- [ ] `CONFIG.submitEndpoint` / `analyticsEndpoint` set to the deployed Apps Script URL.
+- [x] `CONFIG.submitEndpoint` / `analyticsEndpoint` set to the deployed Apps Script URL.
 - [ ] One test application shows `Synced` in the Sheet and appears in Bigin → Creator Onboarding.
 - [ ] `termsUrl` (and `supportUrl` if used) filled in. `privacyUrl` is set to myfrido.com's privacy policy; links with no URL are hidden.
 - [x] `og:image`, `og:url` and `referralBaseUrl` point at `https://fridoxcreators.netlify.app/` (change all three if the page moves to another domain).
