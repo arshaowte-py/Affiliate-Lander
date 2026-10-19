@@ -207,6 +207,7 @@ function createOrNoteRecord_(p, contactId) {
   const existing = existingRecord_(contactId, cfg.layoutId) || recordFromSheet_(contactId);
   if (existing) {
     api_('post', '/Pipelines/' + existing + '/Notes', { data: [note] });
+    linkContact_(existing, contactId);
     noteOnContact_(contactId, p, existing);
     return existing;
   }
@@ -247,9 +248,15 @@ function createOrNoteRecord_(p, contactId) {
     note.Note_Content = 'Some fields were not saved: ' + String(ex).slice(0, 300) + '\n\n' + note.Note_Content;
   }
   api_('post', '/Pipelines/' + id + '/Notes', { data: [note] });
+  linkContact_(id, contactId);
   noteOnContact_(contactId, p, id);
   try { api_('post', '/Pipelines/actions/add_tags', { tags: [tag_()], ids: [id] }); } catch (ex) {}
   return id;
+}
+
+/* Bigin ignored Contact_Name on insert in the live test but accepts it on update, so set it again here. Never fatal. */
+function linkContact_(recordId, contactId) {
+  try { api_('put', '/Pipelines', { data: [{ id: recordId, Contact_Name: { id: contactId } }] }); } catch (ex) {}
 }
 
 /* The Contact gets a short note pointing at the record, so either side leads to the other. Never fatal. */
