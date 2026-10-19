@@ -17,7 +17,9 @@ A single-page, self-contained launch page for the Frido Creator programme.
 `?ref=` and UTM parameters on the lander are passed into the popup and saved on the application (Outreach Ref / UTM Campaign in Bigin).
 
 ## Bigin fields to create
-The "Creator Onboarding" pipeline exists (stage "New Application" is where applications land), but as of 19 Oct 2026 it has **none** of the custom fields below. Until they exist, every answer still goes into the record's note, so nothing is lost; the fields make the answers filterable and give the dashboard something to count.
+The fields were created on 19 Oct 2026, with slightly different labels and values from this table: "Herd From", "Herd from Person", "In Touch with Frido", "Outreach Reference"; hyphens in the ranges; Title Case options; Frido Contact Team as text. `Code.gs` is set up for them as built: `FIELD_LABELS` uses the real labels; `option_()` matches answers ignoring case, spaces and dash style; `VALUE_MAP` covers the two wording differences ("Affiliate money" → "Affiliate Commission", "Cushions & seating" → "Cushion & Seating"). Still missing: **UTM Campaign** and **Existing Affiliate Code** (those answers go in the note until they are added). Run `checkBigin` after any change in Bigin: it lists every field and any form answer with no matching option.
+
+Original spec, for reference:
 
 Bigin → Settings → Customization → Pipelines → Creator Onboarding → add these. Labels must match exactly (`checkBigin` maps label → API name). Picklist values must match exactly too, or Bigin rejects the value and the record is saved without the custom fields (the note says which).
 

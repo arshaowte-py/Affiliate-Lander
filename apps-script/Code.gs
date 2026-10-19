@@ -33,7 +33,8 @@ const BIGIN = {
   tag: 'Creator Lander'
 };
 
-/* Form answer → Bigin pipeline field LABEL (as created in Bigin). checkBigin() turns labels into API names. */
+/* Form answer → Bigin pipeline field LABEL, exactly as created in Bigin (spelling included).
+   checkBigin() turns labels into API names and logs any answer that has no matching picklist option. */
 const FIELD_LABELS = {
   application_id: 'Application ID',
   instagram: 'Instagram Handle',
@@ -47,14 +48,22 @@ const FIELD_LABELS = {
   fee_per_reel: 'Fee per Reel',
   products: 'Products Interested',
   language: 'Content Language',
-  heard_from: 'Heard From',
-  heard_from_person: 'Heard From Person',
-  frido_contact: 'In Touch With Frido',
+  heard_from: 'Herd From',                 // label is spelled "Herd" in Bigin
+  heard_from_person: 'Herd from Person',
+  frido_contact: 'In Touch with Frido',
   frido_contact_name: 'Frido Contact Name',
   frido_contact_team: 'Frido Contact Team',
-  ref: 'Outreach Ref',
-  utm_campaign: 'UTM Campaign',
-  existing_code: 'Existing Affiliate Code'
+  ref: 'Outreach Reference',
+  utm_campaign: 'UTM Campaign',            // not on the layout yet: goes in the note until it is added
+  existing_code: 'Existing Affiliate Code' // not on the layout yet: goes in the note until it is added
+};
+
+/* Form wording → Bigin picklist option where the two differ beyond case, spacing and dash style
+   (those are matched automatically). An answer with no matching option is left out of that field
+   and kept in the note, so one odd value never blocks the record. */
+const VALUE_MAP = {
+  open_to: { 'Affiliate money': 'Affiliate Commission' },
+  products: { 'Cushions & seating': 'Cushion & Seating' }
 };
 
 /* ---------- Sheet ---------- */
@@ -209,12 +218,23 @@ function createOrNoteRecord_(p, contactId) {
   };
   if (BIGIN.ownerId) base.Owner = { id: BIGIN.ownerId };
 
-  const v = values_(p), extra = {};
+  const v = values_(p), extra = {}, dropped = [];
   Object.keys(FIELD_LABELS).forEach(k => {
     const f = cfg.fields[FIELD_LABELS[k]];
     if (!f || v[k] === '' || v[k] == null || (Array.isArray(v[k]) && !v[k].length)) return;
-    extra[f.api] = cast_(v[k], f.type);
+    let val = v[k];
+    if (f.options) {
+      const list = (Array.isArray(val) ? val : [val]).map(x => {
+        const o = option_(k, x, f.options);
+        if (!o) dropped.push(FIELD_LABELS[k] + ': ' + x);
+        return o;
+      }).filter(Boolean);
+      if (!list.length) return;
+      val = Array.isArray(val) ? list : list[0];
+    }
+    extra[f.api] = cast_(val, f.type);
   });
+  if (dropped.length) note.Note_Content = 'Not in Bigin picklists (kept here only): ' + dropped.join('; ') + '\n\n' + note.Note_Content;
 
   let id;
   try {
@@ -318,6 +338,7 @@ function pipelineCfg_(force) {
   const fields = {};
   (layout.sections || []).forEach(s => (s.fields || []).forEach(f => {
     fields[f.field_label] = { api: f.api_name, type: f.data_type };
+    if (/picklist/.test(f.data_type)) fields[f.field_label].options = (f.pick_list_values || []).map(x => x.actual_value).filter(x => x && x !== '-None-');
     if (f.api_name === 'Sub_Pipeline') {
       const v = (f.pick_list_values || []).map(x => x.actual_value || x.display_value).filter(x => x && x !== '-None-');
       if (v.length) sub = v[0];
@@ -378,6 +399,26 @@ function api_(method, path, body, allowEmpty) {
   return d;
 }
 
+/* Bigin option for a form answer: VALUE_MAP first, then a match ignoring case, spaces and dash style. */
+function option_(key, answer, options) {
+  const a = (VALUE_MAP[key] && VALUE_MAP[key][answer]) || answer;
+  const norm = x => String(x).toLowerCase().replace(/[\u2010-\u2015]/g, '-').replace(/\s+/g, '');
+  return options.find(o => norm(o) === norm(a)) || '';
+}
+
+/* Every answer the form can send, used by checkBigin() to spot picklist gaps. Keep in sync with apply.html. */
+const FORM_OPTIONS = {
+  followers_range: ['Under 10k', '10k–50k', '50k–100k', '100k–500k', '500k+'],
+  avg_views_range: ['Under 5k', '5k–25k', '25k–100k', '100k+'],
+  niche: ['WFH / desk', 'Lifestyle', 'Health / physio', 'Fitness', 'Parenting', 'Travel', 'Tech', 'Fashion', 'Comedy', 'Other'],
+  open_to: ['Affiliate money', 'Barter collab', 'Paid content / UGC', 'Partnership ads'],
+  partnership_ads: ['Yes', 'Open to discuss', 'No'],
+  products: ['Posture & back', 'Sleep & pillows', 'Cushions & seating', 'Hot & cold therapy', 'Feet & walking', 'Workspace & chairs'],
+  language: ['English', 'Hindi', 'Hinglish', 'Marathi', 'Tamil', 'Telugu', 'Kannada', 'Malayalam', 'Bengali', 'Gujarati', 'Punjabi', 'Other'],
+  heard_from: ['Instagram DM from Frido', 'Email from Frido', 'Frido influencer marketing team', 'Frido employee', 'Another creator', 'Frido website', 'Frido store', 'Other'],
+  frido_contact: ['Yes', 'No']
+};
+
 /* ================================================================= */
 /* Admin helpers (run from the editor)                                */
 
@@ -393,6 +434,10 @@ function checkBigin() {
   Object.keys(FIELD_LABELS).forEach(k => {
     const f = cfg.fields[FIELD_LABELS[k]];
     Logger.log((f ? 'OK      ' : 'MISSING ') + FIELD_LABELS[k] + (f ? '  → ' + f.api + ' (' + f.type + ')' : '  (answer still goes in the note)'));
+    if (f && f.options && FORM_OPTIONS[k]) {
+      const bad = FORM_OPTIONS[k].filter(x => !option_(k, x, f.options));
+      if (bad.length) Logger.log('        no Bigin option for: ' + bad.join(', ') + '  (add it in Bigin or in VALUE_MAP)');
+    }
   });
 }
 
