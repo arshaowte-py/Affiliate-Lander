@@ -208,7 +208,6 @@ function createOrNoteRecord_(p, contactId) {
   if (existing) {
     api_('post', '/Pipelines/' + existing + '/Notes', { data: [note] });
     linkContact_(existing, contactId);
-    noteOnContact_(contactId, p, existing);
     return existing;
   }
 
@@ -249,7 +248,6 @@ function createOrNoteRecord_(p, contactId) {
   }
   api_('post', '/Pipelines/' + id + '/Notes', { data: [note] });
   linkContact_(id, contactId);
-  noteOnContact_(contactId, p, id);
   try { api_('post', '/Pipelines/actions/add_tags', { tags: [tag_()], ids: [id] }); } catch (ex) {}
   return id;
 }
@@ -257,16 +255,6 @@ function createOrNoteRecord_(p, contactId) {
 /* Bigin ignored Contact_Name on insert in the live test but accepts it on update, so set it again here. Never fatal. */
 function linkContact_(recordId, contactId) {
   try { api_('put', '/Pipelines', { data: [{ id: recordId, Contact_Name: { id: contactId } }] }); } catch (ex) {}
-}
-
-/* The Contact gets a short note pointing at the record, so either side leads to the other. Never fatal. */
-function noteOnContact_(contactId, p, recordId) {
-  try {
-    api_('post', '/Contacts/' + contactId + '/Notes', { data: [{
-      Note_Title: 'Creator application ' + p.application_id,
-      Note_Content: 'Applied via the Frido Creator lander. Creator Onboarding record: @' + p.instagram + ' – ' + p.name + ' (record ID ' + recordId + ').'
-    }] });
-  } catch (ex) {}
 }
 
 function existingRecord_(contactId, layoutId) {
@@ -363,7 +351,7 @@ function noteText_(p) {
   line('Heard from', p.heard_from + (p.heard_from_person ? ' – ' + p.heard_from_person : ''));
   line('In touch with Frido', p.frido_contact + (p.frido_contact_name ? ' – ' + p.frido_contact_name + (p.frido_contact_team ? ' (' + p.frido_contact_team + ')' : '') + (p.frido_contact_relationship ? ', ' + p.frido_contact_relationship : '') : ''));
   line('Outreach ref', p.ref);
-  line('UTM', [p.utm_source, p.utm_medium, p.utm_campaign, p.utm_content].filter(String).join(' / '));
+  line('UTM', [p.utm_source, p.utm_medium, p.utm_campaign, p.utm_content].filter(Boolean).join(' / '));
   return L.join('\n');
 }
 
