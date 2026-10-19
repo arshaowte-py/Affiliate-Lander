@@ -201,11 +201,13 @@ function findContact_(criteria) {
 /* Pipeline record in "Creator Onboarding". If this contact already has one, add the new application as a note instead. */
 function createOrNoteRecord_(p, contactId) {
   const cfg = pipelineCfg_();
+  p.bigin_contact_id = contactId;
   const note = { Note_Title: 'Creator application ' + p.application_id, Note_Content: noteText_(p) };
 
   const existing = existingRecord_(contactId, cfg.layoutId) || recordFromSheet_(contactId);
   if (existing) {
     api_('post', '/Pipelines/' + existing + '/Notes', { data: [note] });
+    noteOnContact_(contactId, p, existing);
     return existing;
   }
 
@@ -245,8 +247,19 @@ function createOrNoteRecord_(p, contactId) {
     note.Note_Content = 'Some fields were not saved: ' + String(ex).slice(0, 300) + '\n\n' + note.Note_Content;
   }
   api_('post', '/Pipelines/' + id + '/Notes', { data: [note] });
+  noteOnContact_(contactId, p, id);
   try { api_('post', '/Pipelines/actions/add_tags', { tags: [tag_()], ids: [id] }); } catch (ex) {}
   return id;
+}
+
+/* The Contact gets a short note pointing at the record, so either side leads to the other. Never fatal. */
+function noteOnContact_(contactId, p, recordId) {
+  try {
+    api_('post', '/Contacts/' + contactId + '/Notes', { data: [{
+      Note_Title: 'Creator application ' + p.application_id,
+      Note_Content: 'Applied via the Frido Creator lander. Creator Onboarding record: @' + p.instagram + ' – ' + p.name + ' (record ID ' + recordId + ').'
+    }] });
+  } catch (ex) {}
 }
 
 function existingRecord_(contactId, layoutId) {
@@ -330,6 +343,8 @@ function noteText_(p) {
   const v = values_(p), L = [];
   const line = (k, x) => { if (x !== '' && x != null && !(Array.isArray(x) && !x.length)) L.push(k + ': ' + (Array.isArray(x) ? x.join(', ') : x)); };
   line('Application ID', p.application_id);
+  line('Name', p.name); line('WhatsApp', p.mobile); line('Email', p.email);   // the layout has no Contact Name, so the record shows these here
+  line('City', [p.city, p.pincode].filter(Boolean).join(' ')); line('Contact ID', p.bigin_contact_id);
   line('Submitted', p.submitted_at);
   line('Instagram', v.instagram + ' (' + v.instagram_url + ')');
   line('Followers', p.followers_range); line('Avg reel views', p.avg_views_range);
