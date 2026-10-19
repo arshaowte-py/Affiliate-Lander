@@ -83,6 +83,7 @@ button,input,select,textarea{font:inherit;color:inherit}
 .input .pre{padding-left:14px;color:var(--muted);font-weight:500}
 .input .pre+input{padding-left:6px}
 .input select{appearance:none;cursor:pointer;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none' stroke='%235E6670' stroke-width='2'%3E%3Cpath d='M1 1l5 5 5-5'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px}
+.input select:invalid{color:#8A9099}
 .field.err .input{border-color:var(--bad);background:var(--bad-bg)}
 .errmsg{display:none;color:var(--bad);font-size:13px;font-weight:500}
 .field.err .errmsg{display:block}
@@ -379,11 +380,12 @@ html.embed .x{display:grid;place-items:center}
         </div>
 
         <div class="section">
-          <div class="field">
+          <div class="field" data-f="source">
             <label for="source">How did you hear about us?</label>
-            <div class="input"><select id="source" name="source">
-              <option>Instagram DM from Frido</option><option>Email from Frido</option><option>Frido influencer marketing team</option><option>Frido employee</option><option>Another creator</option><option>Frido website</option><option>Frido store</option><option>Other</option>
+            <div class="input"><select id="source" name="source" required>
+              <option value="" disabled selected>Choose one</option><option>Instagram DM from Frido</option><option>Email from Frido</option><option>Frido influencer marketing team</option><option>Frido employee</option><option>Another creator</option><option>Frido website</option><option>Frido store</option><option>Other</option>
             </select></div>
+            <span class="errmsg">Pick where you heard about us.</span>
           </div>
           <div class="reveal" id="sourceReveal" style="margin-top:12px">
             <div class="field" data-f="sourceName">
@@ -557,7 +559,7 @@ html.embed .x{display:grid;place-items:center}
     const on=needsSourceName();document.getElementById('sourceReveal').classList.toggle('open',on);
     document.getElementById('sourceNameLabel').textContent=val('source')==='Frido employee'?'Employee’s name':'Team member’s name';
   }
-  document.getElementById('source').addEventListener('change',toggleSource);
+  document.getElementById('source').addEventListener('change',()=>{toggleSource();document.querySelector('[data-f="source"]').classList.remove('err')});
   document.getElementById('consent').addEventListener('change',()=>document.getElementById('consentWrap').classList.remove('err'));
 
   // Validation per step
@@ -581,6 +583,7 @@ html.embed .x{display:grid;place-items:center}
     }
     if(step===3){
       ['collab','products','fridoContact'].forEach(n=>{if(groupErr(n,!groups[n].length))errs.push(n)});
+      if(setErr('source',!val('source')))errs.push('source');
       if(wantsAds()&&groupErr('whitelist',!groups.whitelist.length))errs.push('whitelist');
       if(groups.fridoContact[0]==='Yes'&&setErr('contactName',val('contactName').length<2))errs.push('contactName');
       if(needsSourceName()&&setErr('sourceName',val('sourceName').length<2))errs.push('sourceName');
